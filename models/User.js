@@ -1,18 +1,25 @@
 const mongoose=require('mongoose');
 const bcrypt=require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const UserSchema=new mongoose.Schema({
-name:{
+const UserSchema = new mongoose.Schema({
+  name:{
     type:String,
     required:[true,'Please add a name']
-    },
-    email:{
-    type: String,
+  },
+
+  telephone:{
+    type:String,
+    required:[true,'Please add a telephone number'],
+    match:[/^[0-9]{9,10}$/, 'Please add a valid telephone number']
+  },
+
+  email:{
+    type:String,
     required:[true,'Please add an email'],
-    unique: true,
-    match: [
-    /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[ \]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\- 0-9]+\.)+[a-zA-Z]{2,}))$/,
-    'Please add a valid email'
+    unique:true,
+    match:[
+      /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/,
+      'Please add a valid email'
     ]
 },
 role: {
