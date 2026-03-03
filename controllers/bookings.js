@@ -1,6 +1,7 @@
 const Booking = require('../models/Booking');
 
 const Dentist = require('../models/Dentist');
+
 //@desc Get all bookings
 //@routeGET /api/v1/bookings
 //@access Public
@@ -8,11 +9,11 @@ exports.getBookings=async (req,res,next)=>{
 let query;
 if (req.params.dentistId) {
 
-  query = Appointment.find({
+  query = Booking.find({
     dentist: req.params.dentistId
   }).populate({
     path: 'dentist',
-    select: 'name year_of_experience area_expertise'
+    select: 'name year_of_experience area_of_expertise'
   });
 
 }
@@ -20,7 +21,7 @@ if (req.params.dentistId) {
 else if(req.user.role !== 'admin'){
 query=Booking.find({user:req.user.id}).populate({
     path:'dentist',
-    select: 'name year_of_experience area_expertise'
+    select: 'name year_of_experience area_of_expertise'
 });
 }else{ 
     //If you are an admin, you can see all!
@@ -28,12 +29,12 @@ query=Booking.find({user:req.user.id}).populate({
         console.log(req.params.dentistId);
         query = Booking.find({dentist: req.params.dentistId}).populate({
             path: "dentist",
-            select: "name year_of_experience area_expertise"
+            select: "name year_of_experience area_of_expertise"
         });
     }else{
     query=Booking.find().populate({
         path:'dentist',
-        select: 'name year_of_experience area_expertise'
+        select: 'name year_of_experience area_of_expertise'
     });
     }
 }
@@ -57,7 +58,7 @@ exports.getBooking = async(req,res,next)=>{
     try{
         const booking = await Booking.findById(req.params.id).populate({
             path : 'dentist',
-            select : 'name year_of_experience area_expertise'
+            select : 'name year_of_experience area_of_expertise'
         });
         if (!booking){
             return res.status(404).json({success : false, message:`No Booking with the id of ${req.params.id}`});
@@ -88,8 +89,9 @@ exports.addBooking = async(req,res,next)=>{
         //Check for existed Appointment
         const existedBooking = await Booking.find({user:req.user.id});
          //if user is not admin , can add only 3 appointment
-         if (existedBooking.length>=3 && req.user.role !== 'admin'){
-            return res.status(400).json({success:true,message:`The user with id ${req.user.id} has already made 3 appointments`});
+         if (existedBooking.length>=1 && req.user.role !== 'admin'){
+            return res.status(400).json({success:false,
+            message:`The user with id ${req.user.id} has already made a appointments`});
         }
         const booking = await Booking.create(req.body);
         res.status(200).json({
@@ -112,9 +114,19 @@ exports.updateBooking=async(req,res,next)=>{
         if (!booking){
             return res.status(404).json({success:false , message:`No booking with the id of ${req.params.id}`});
         }
+
+        const mongoose = require('mongoose');
+
+if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({
+        success: false,
+        message: 'Invalid booking ID'
+    });
+}
         //Make sure user is appointment owner
         if (booking.user.toString()!==req.user.id && req.user.role!=='admin'){
-            return res.status(401).json({success:false,message:`User ${req.user.id} is not authorized to update this booking`});
+            return res.status(401).json({success:false,
+            message:`User ${req.user.id} is not authorized to update this booking`});
         }
         booking = await Booking.findByIdAndUpdate(req.params.id,req.body,{
             new : true,
