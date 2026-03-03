@@ -1,0 +1,153 @@
+const Dentist = require("../models/Dentist.js");
+const Appointment = require('../models/Appointment.js');
+const asyncHandler = require('express-async-handler');
+
+
+// @desc    Get all dentists
+// @route   GET /api/v1/dentists
+// @access  Public
+exports.getDentists = asyncHandler(async (req, res, next) => {
+
+    let query;
+
+    const reqQuery = { ...req.query };
+
+    const removeFields = ['select', 'sort', 'page', 'limit'];
+    removeFields.forEach(param => delete reqQuery[param]);
+
+    let queryStr = JSON.stringify(reqQuery);
+    queryStr = queryStr.replace(/\b(gt|gte|lt|lte|in)\b/g, match => `$${match}`);
+
+    query = Dentist.find(JSON.parse(queryStr)).populate('appointments');
+
+    // Select fields
+    if (req.query.select) {
+        const fields = req.query.select.split(',').join(' ');
+        query = query.select(fields);
+    }
+
+    // Sort
+    if (req.query.sort) {
+        const sortBy = req.query.sort.split(',').join(' ');
+        query = query.sort(sortBy);
+    } else {
+        query = query.sort('-createdAt');
+    }
+
+    // Pagination
+    const page = parseInt(req.query.page, 10) || 1;
+    const limit = parseInt(req.query.limit, 10) || 25;
+    const startIndex = (page - 1) * limit;
+    const endIndex = page * limit;
+    const total = await Dentist.countDocuments();
+
+    query = query.skip(startIndex).limit(limit);
+
+    const dentists = await query;
+
+    const pagination = {};
+
+    if (endIndex < total) {
+        pagination.next = {
+            page: page + 1,
+            limit
+        };
+    }
+
+    if (startIndex > 0) {
+        pagination.prev = {
+            page: page - 1,
+            limit
+        };
+    }
+
+    res.status(200).json({
+        success: true,
+        count: dentists.length,
+        pagination,
+        data: dentists
+    });
+});
+
+
+// @desc    Get single dentist
+// @route   GET /api/v1/dentists/:id
+// @access  Public
+exports.getDentist = asyncHandler(async (req, res, next) => {
+
+    const dentist = await Dentist.findById(req.params.id);
+
+    if (!dentist) {
+        return res.status(404).json({ success: false });
+    }
+
+    res.status(200).json({
+        success: true,
+        data: dentist
+    });
+});
+
+
+// @desc    Create dentist
+// @route   POST /api/v1/dentists
+// @access  Private (Admin)
+exports.createDentist = asyncHandler(async (req, res, next) => {
+
+    const dentist = await Dentist.create(req.body);
+
+    res.status(201).json({
+        success: true,
+        data: dentist
+    });
+});
+
+
+// @desc    Update dentist
+// @route   PUT /api/v1/dentists/:id
+// @access  Private (Admin)
+exports.updateDentist = asyncHandler(async (req, res, next) => {
+
+    const dentist = await Dentist.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        {
+            new: true,
+            runValidators: true
+        }
+    );
+
+    if (!dentist) {
+        return res.status(404).json({ success: false });
+    }
+
+    res.status(200).json({
+        success: true,
+        data: dentist
+    });
+});
+
+
+// @desc    Delete dentist
+// @route   DELETE /api/v1/dentists/:id
+// @access  Private (Admin)
+exports.deleteDentist = asyncHandler(async (req, res, next) => {
+
+    const dentist = await Dentist.findById(req.params.id);
+
+    if (!dentist) {
+        return res.status(404).json({
+            success: false,
+            message: `Dentist not found with id of ${req.params.id}`
+        });
+    }
+
+    // Delete all appointments of this dentist
+    await Appointment.deleteMany({ dentist: req.params.id });
+
+    await Dentist.deleteOne({ _id: req.params.id });
+
+    res.status(200).json({
+        success: true,
+        data: {}
+    });
+});
